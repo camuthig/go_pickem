@@ -49,7 +49,7 @@ func main() {
     // Groups Collection
     // Need full Group CRUD
 
-    // Set up the middleware
+    // Set up the common middleware
     n := negroni.New(
         negroni.NewRecovery(),
         negroni.NewLogger(),
