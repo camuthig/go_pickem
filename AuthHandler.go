@@ -14,6 +14,23 @@ import (
 	"time"
 )
 
+func createJwtToken(user bson.M) (token string, err interface{}) {
+	// Create a new token
+	jwtToken := jwt.New(jwt.SigningMethodHS256)
+	// Set some claims
+	jwtToken.Claims["user"] = user
+	jwtToken.Claims["exp"] = time.Now().Add(time.Hour * 72).Unix()
+	// Sign and get the complete encoded token as a string
+	jwtString, jwtErr := jwtToken.SignedString([]byte(os.Getenv("AUTH0_CLIENT_SECRET")))
+
+	if jwtErr != nil {
+		log.Println("Error creating the JWT:", jwtErr)
+	}
+
+	return jwtString, jwtErr
+
+}
+
 func LoginPostHandler(rw http.ResponseWriter, req *http.Request) {
 	inputMap := GetJson(req)
 	db := GetDb(req)
@@ -35,16 +52,8 @@ func LoginPostHandler(rw http.ResponseWriter, req *http.Request) {
 
 	if passwordCheck == nil {
 		// Create a JWT
-		// Create the token
-		token := jwt.New(jwt.SigningMethodHS256)
-		// Set some claims
-		token.Claims["user"] = user
-		token.Claims["exp"] = time.Now().Add(time.Hour * 72).Unix()
-		// Sign and get the complete encoded token as a string
-		tokenString, err := token.SignedString([]byte(os.Getenv("AUTH0_CLIENT_SECRET")))
-
+		jwtString, err := createJwtToken(user)
 		if err != nil {
-			log.Println("Error creating the JWT:", err)
 			rend.JSON(rw, http.StatusInternalServerError, bson.M{})
 			return
 		}
@@ -65,7 +74,7 @@ func LoginPostHandler(rw http.ResponseWriter, req *http.Request) {
 		}
 
 		rend.JSON(rw, http.StatusOK, bson.M{
-			"jwt":          tokenString,
+			"jwt":          jwtString,
 			"refreshToken": refreshToken,
 		})
 	} else {
@@ -121,16 +130,8 @@ func RefreshPostHandler(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	// Create a new token
-	jwtToken := jwt.New(jwt.SigningMethodHS256)
-	// Set some claims
-	jwtToken.Claims["user"] = user
-	jwtToken.Claims["exp"] = time.Now().Add(time.Hour * 72).Unix()
-	// Sign and get the complete encoded token as a string
-	jwtString, err := jwtToken.SignedString([]byte(os.Getenv("AUTH0_CLIENT_SECRET")))
-
+	jwtString, err := createJwtToken(user)
 	if err != nil {
-		log.Println("Error creating the JWT:", err)
 		rend.JSON(rw, http.StatusInternalServerError, bson.M{})
 		return
 	}
